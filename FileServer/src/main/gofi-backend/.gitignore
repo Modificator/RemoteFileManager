@@ -1,0 +1,5 @@
+.idea
+*gofi.db
+storage
+dist/
+*.DS_Store

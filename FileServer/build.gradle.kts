@@ -35,6 +35,14 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+    splits{
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a")
+            isUniversalApk = true
+        }
+    }
 }
 
 dependencies {
@@ -65,7 +73,7 @@ tasks.register("buildGolang") {
         val ndkDir = getLocalProperty("ndk.dir") as String
         val goDir = getLocalProperty("go.dir") as String
         exec {
-            commandLine("$goDir/bin/go", "build","-buildmode=c-shared", "-o", "../jniLibs/armeabi-v7a/libFileServer.so")
+            commandLine("$goDir/bin/go", "build","-buildmode=c-shared","-ldflags", "-s -w", "-o", "../jniLibs/armeabi-v7a/libFileServer.so")
                 .workingDir("$projectDir/src/main/gofi-backend")
                 .environment(
                     "GOOS" to "android",
@@ -79,7 +87,7 @@ tasks.register("buildGolang") {
                 )
         }
         exec {
-            commandLine("$goDir/bin/go", "build", "-o", "../jniLibs/arm64-v8a/libFileServer.so")
+            commandLine("$goDir/bin/go", "build", "-buildmode=c-shared", "-ldflags", "-s -w", "-o", "../jniLibs/arm64-v8a/libFileServer.so")
                 .workingDir("$projectDir/src/main/gofi-backend")
                 .environment(
                     "GOOS" to "android",
@@ -94,21 +102,28 @@ tasks.register("buildGolang") {
         }
     }
     onlyIf {
-        false
+        true
     }
 }
 
 
 tasks.register("buildWeb") {
     doFirst {
-        println("This is the dependent task")
-    }
-    onlyIf {
-        println("hello build web 1")
-        true
+        exec {
+            commandLine( "/usr/bin/yarn")
+                .workingDir("$projectDir/src/main/gofi-frontend")
+        }
+        exec {
+            commandLine( "/usr/bin/yarn", "build", "--mode","production")
+                .workingDir("$projectDir/src/main/gofi-frontend")
+        }
     }
     doLast {
-        println("hello build web ")
+        exec { commandLine("/usr/bin/rm", "-rf", "$projectDir/src/main/assets/*") }
+        file("$projectDir/src/main/gofi-frontend/dist/").renameTo(File("$projectDir/src/main/assets"))
+    }
+    onlyIf {
+        true
     }
 }
 

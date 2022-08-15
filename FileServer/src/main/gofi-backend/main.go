@@ -15,14 +15,23 @@ import (
     "unsafe"
     "reflect"
     "unicode/utf16"
+    "gofi/env"
+    "path/filepath"
 )
-/*
+/*\
 #include <jni.h>
 #include <string.h>
 #include <android/log.h>
+#include <stdlib.h>
 
 const static jstring JString(JNIEnv *env, const char* str) {
     return (*env)->NewStringUTF(env, str);
+}
+static jsize jni_GetStringLength(JNIEnv *env, jstring str) {
+    return (*env)->GetStringLength(env, str);
+}
+static const jchar *jni_GetStringChars(JNIEnv *env, jstring str) {
+    return (*env)->GetStringChars(env, str, NULL);
 }
 */
 import "C"
@@ -34,8 +43,9 @@ func init() {
 var gWebServer *http.Server
 
 //export Java_com_patchself_goserver_FileServer_startServer
-func StartServer(env *C.JNIEnv, ctx C.jobject, listenJ C.jstring) {
-    listen := GoString(env, listenJ)
+func Java_com_patchself_goserver_FileServer_startServer(cenv *C.JNIEnv, ctx C.jobject, webResPath C.jstring, listenJ C.jstring) {
+    listen := GoString(cenv, listenJ)
+    webStaticPath := GoString(cenv, webResPath)
     logrus.Infof("Gofi is running on %v，current environment is %s,version is %s\n", listen, env.Current(), db.ObtainConfiguration().Version)
 
     app := gin.Default()
@@ -52,28 +62,15 @@ func StartServer(env *C.JNIEnv, ctx C.jobject, listenJ C.jstring) {
     app.Use(middleware.CORS)
     app.Use(middleware.Language)
 
-    if !env.IsDevelop() {
-        app.Use(middleware.StaticFS("/", "dist", env.EmbedStaticAssets))
-
-        app.NoRoute(func(context *gin.Context) {
-            indexBytes, err := env.EmbedStaticAssets.ReadFile("dist/index.html")
-            if err != nil {
-                logrus.Fatal(err)
-            }
-            context.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-            context.String(http.StatusOK, string(indexBytes))
-        })
-    } else {
-        app.Static("/assets", "env/dist/assets")
-        app.NoRoute(func(context *gin.Context) {
-            indexBytes, err := os.ReadFile("env/dist/index.html")
-            if err != nil {
-                logrus.Fatal(err)
-            }
-            context.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-            context.String(http.StatusOK, string(indexBytes))
-        })
-    }
+    app.Static("/assets", filepath.Join(webStaticPath, "/assets"))
+    app.NoRoute(func(context *gin.Context) {
+        indexBytes, err := os.ReadFile(filepath.Join(webStaticPath, "/index.html"))
+        if err != nil {
+            logrus.Fatal(err)
+        }
+        context.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+        context.String(http.StatusOK, string(indexBytes))
+    })
 
     api := app.Group("/api")
     {
@@ -84,7 +81,7 @@ func StartServer(env *C.JNIEnv, ctx C.jobject, listenJ C.jstring) {
         api.GET("/file", controller.FileDetail)
         api.GET("/download", controller.Download)
         api.HEAD("download", controller.Download)
-        api.POST("/upload", middleware.AuthChecker, controller.Upload)
+        api.POST("/upload", controller.Upload)
     }
 
     user := api.Group("/user")
@@ -105,9 +102,11 @@ func StartServer(env *C.JNIEnv, ctx C.jobject, listenJ C.jstring) {
 }
 
 //export Java_com_patchself_goserver_FileServer_stopServer
-func KillServer() {
-    gWebServer.Shutdown(context.Background())
-    gWebServer = nil
+func Java_com_patchself_goserver_FileServer_stopServer() {
+    if gWebServer != nil {
+        gWebServer.Shutdown(context.Background())
+        gWebServer = nil
+    }
 }
 func JavaString(env *C.JNIEnv, str string) C.jstring {
     cstr := C.CString(str)
@@ -140,3 +139,5 @@ func GoString(env *C.JNIEnv, str C.jstring) string {
     utf8 := utf16.Decode(utf16Chars)
     return string(utf8)
 }
+
+func main() {}

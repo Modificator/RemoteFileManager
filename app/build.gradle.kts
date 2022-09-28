@@ -4,12 +4,12 @@ plugins {
 }
 
 android {
-    compileSdk = 32
+    compileSdk = 33
 
     defaultConfig {
         applicationId = "com.patchself.filemanager"
         minSdk = 16
-        targetSdk = 32
+        targetSdk = 33
         versionCode = 1
         versionName = "1.0"
 
@@ -18,7 +18,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -32,14 +34,19 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+    splits {
+        abi {
+            isEnable = true
+        }
+    }
 }
 
 dependencies {
 
-    implementation("androidx.core:core-ktx:1.8.0")
-    implementation("androidx.appcompat:appcompat:1.5.0")
+    implementation("androidx.core:core-ktx:1.9.0")
+    implementation("androidx.appcompat:appcompat:1.5.1")
 //    implementation("com.google.android.material:material:1.6.1")
-    implementation("com.google.android.material:material:1.7.0-beta01")
+    implementation("com.google.android.material:material:1.8.0-alpha01")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation(project(mapOf("path" to ":FileServer")))
     testImplementation("junit:junit:4.13.2")

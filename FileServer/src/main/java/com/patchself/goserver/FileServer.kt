@@ -2,8 +2,6 @@ package com.patchself.goserver
 
 import android.content.Context
 import android.content.res.AssetManager
-import android.util.Log
-import android.widget.Toast
 import java.io.File
 import java.io.File.separator
 import java.io.FileOutputStream
